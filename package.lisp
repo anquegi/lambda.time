@@ -29,7 +29,10 @@
            :read-interval-or-never
            :set-local-time
            :timezone-string
-           :verify-date ))
+           :verify-date
+           ;;
+           :*default-date-print-mode*
+           ))
 
 (defpackage :lambda.time.internal
   (:use :lambda.time :cl :fiveam)
