@@ -545,7 +545,7 @@ A universal-time is the number of seconds since 01-Jan-1900 00:00-GMT (a bignum)
 (DEFPROP :DD/MM/YY "~D/~2,'0D~*~:[/~2,'0D~:;~]" DATE-FORMAT)           ;27/10{/66}
 (DEFPROP :DD/MM/YYYY "~D/~2,'0D~*~:[/~*~D~:;~]" DATE-FORMAT)           ;27/10{/1966}
 (DEFPROP :MM/DD/YY "~*~D/~0@*~2,'0D~2*~:[/~2,'0D~:;~]" DATE-FORMAT)    ;10/27{/66}
-(DEFPROP :MM/DD/YYYY "~*~D/~0@*~2,'0D~2*~:[/~*~D~~:;]" DATE-FORMAT)    ;10/27{/1966}
+(DEFPROP :MM/DD/YYYY "~*~D/~0@*~2,'0D~2*~:[/~*~D~:;~]" DATE-FORMAT)    ;10/27{/1966}
 (DEFPROP :DD-MM-YY "~D-~2,'0D~*~:[-~2,'0D~:;~]" DATE-FORMAT)               ;27-10{-66}
 (DEFPROP :DD-MM-YYYY "~D-~2,'0D~*~:[-~*~D~:;~]" DATE-FORMAT)               ;27-10{-1966}
 (DEFPROP :DD-MMM-YY "~D-~*~A~:[-~2,'0D~:;~]" DATE-FORMAT)                  ;27-Oct{-66}
