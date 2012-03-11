@@ -1,0 +1,3 @@
+* LMI Lambda TIME package
+- licence New BSD License
+- http://code.google.com/p/jrm-code-project/source/browse/trunk/lambda/io1/time.lisp
