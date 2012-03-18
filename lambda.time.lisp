@@ -488,7 +488,7 @@ and the local user.  Will notify where time gotten from unless suppressed."
 Knows about leap years.  January is month 1."
   (IF (= MONTH 2)
       (IF (LEAP-YEAR-P YEAR) 29. 28.)
-    (NTH MONTH *MONTH-LENGTHS*)))
+    (elt *MONTH-LENGTHS* MONTH)))
 
 (DEFUN LEAP-YEAR-P (YEAR)                       ;2000 is a leap year.  2100 is not.
   "T if YEAR is a leap year."
@@ -850,14 +850,16 @@ is the same as DAY-OF-THE-WEEK, return NIL; otherwise, return a string that
 contains a suitable error message. If YEAR is less than 100, it is shifted
 by centuries until it is within 50 years of the present."
   (COND ((> DAY (MONTH-LENGTH MONTH YEAR))
-         (FORMAT NIL "~A only has ~D day~:P" (MONTH-STRING MONTH) (MONTH-LENGTH MONTH YEAR)))
+         (FORMAT NIL
+                 "~A only has ~D day~:P"
+                 (MONTH-STRING MONTH) (MONTH-LENGTH MONTH YEAR)))
         (DAY-OF-THE-WEEK
          (LET ((UT (ENCODE-UNIVERSAL-TIME 0 0 0 DAY MONTH YEAR)))
            (MULTIPLE-VALUE-BIND (NIL NIL NIL NIL NIL NIL CORRECT-DAY-OF-THE-WEEK)
                (DECODE-UNIVERSAL-TIME UT)
              (AND (≠ DAY-OF-THE-WEEK CORRECT-DAY-OF-THE-WEEK)
                   (FORMAT NIL "The ~:R of ~A, ~D is a ~A, not a ~A"
-                          (MONTH-STRING MONTH) DAY YEAR
+                          DAY (MONTH-STRING MONTH) YEAR
                           (DAY-OF-THE-WEEK-STRING CORRECT-DAY-OF-THE-WEEK)
                           (DAY-OF-THE-WEEK-STRING DAY-OF-THE-WEEK))))))
         (T
