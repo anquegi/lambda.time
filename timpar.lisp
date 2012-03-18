@@ -206,39 +206,41 @@ Assumes that the package is the TIME package for them."
 
 (DEFMACRO DEFPATTERN (FROM-STATE PATTERN TO-STATE LAMBDA-LIST &body BODY)
   (LET ((FUNCTION-NAME (GENSYM)))
-    `(PROGN 'COMPILE
-            (DEFUN ,FUNCTION-NAME ,LAMBDA-LIST
-              ,(and (member 'ignore lambda-list) '(declare (ignore ignore)))
-              . ,BODY)
-            (DEFINE-PATTERN ',FROM-STATE ',PATTERN ',TO-STATE ',FUNCTION-NAME T))))
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (DEFUN ,FUNCTION-NAME ,LAMBDA-LIST
+         ,(and (member 'ignore lambda-list) '(declare (ignore ignore)))
+         . ,BODY)
+       (DEFINE-PATTERN ',FROM-STATE ',PATTERN ',TO-STATE ',FUNCTION-NAME T))))
 
 (DEFMACRO DEFPATTERN-PEEK (FROM-STATE PATTERN TO-STATE LAMBDA-LIST &body BODY)
   (LET ((FUNCTION-NAME (GENSYM)))
-    `(PROGN 'COMPILE
-            (DEFUN ,FUNCTION-NAME ,LAMBDA-LIST . ,BODY)
-            (DEFINE-PATTERN ',FROM-STATE ',PATTERN ',TO-STATE ',FUNCTION-NAME NIL))))
+    `(eval-when (:compile-toplevel :load-toplevel :execute)
+       (DEFUN ,FUNCTION-NAME ,LAMBDA-LIST . ,BODY)
+       (DEFINE-PATTERN ',FROM-STATE ',PATTERN ',TO-STATE ',FUNCTION-NAME NIL))))
 
 ;(DEFVAR *STATES* NIL)  Need to check if unbound.
 ;(DECLARE (SPECIAL *STATES*))
-(DEFVAR *STATES*)
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (DEFVAR *STATES* nil)
 
 ;;; This function gets invoked once at load-time before any of the patters
 ;;; are defined.  There must be exactly one top-level call to this
 ;;; function in the file, and it must be before all the DEFPATTERNs.
-(DEFUN START-PATTERNS ()
-  (IF (BOUNDP '*STATES*)
-      ;; We are reloading.
-      (DOLIST (STATE *STATES*)
-        (REMPROP STATE 'PATTERNS)))
-  (SETQ *STATES* NIL))
+  (DEFUN START-PATTERNS ()
+    (IF (BOUNDP '*STATES*)
+        ;; We are reloading.
+        (DOLIST (STATE *STATES*)
+          (REMPROP STATE 'PATTERNS)))
+    (SETQ *STATES* NIL))
 
 ;;; This function runs once at load-time for each DEFPATTERN.  This DEFUN must
 ;;; appear before any calls to DEFPATTERN in this file.
-(DEFUN DEFINE-PATTERN (FROM-STATE PATTERN TO-STATE FUNCTION-NAME SKIP-PATTERNS)
-  (OR (MEMQ FROM-STATE *STATES*)
-      (PUSH FROM-STATE *STATES*))
-  (PUSH (LIST PATTERN TO-STATE FUNCTION-NAME SKIP-PATTERNS)
-        (GET FROM-STATE 'PATTERNS)))
+
+  (DEFUN DEFINE-PATTERN (FROM-STATE PATTERN TO-STATE FUNCTION-NAME SKIP-PATTERNS)
+    (OR (MEMQ FROM-STATE *STATES*)
+        (PUSH FROM-STATE *STATES*) )
+    (PUSH (LIST PATTERN TO-STATE FUNCTION-NAME SKIP-PATTERNS)
+          (GET FROM-STATE 'PATTERNS) )))
 
 ;;; This function gets invoked once at load-time after all the patterns
 ;;; are defined.  There must be exactly one top-level call to this

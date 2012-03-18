@@ -73,3 +73,5 @@
  ("1 hour before dlw's birthday" NIL))|#
 
 ;;; eof
+
+(parse-universal-time "now")
