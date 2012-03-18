@@ -17,7 +17,20 @@
             (function orig))))
 
 (defmacro multiple-value (vars vals)
-  `(multiple-value-setq ,vars ,vals))
+  (let* ((ignores '())
+         (vars (mapcar (lambda (v)
+                         (cond ((string= 'NIL v)
+                                (let ((sym (gensym "NIL-")))
+                                  (push sym ignores)
+                                  sym))
+                               ((string= 'IGNORE v)
+                                (let ((sym (gensym "IGNORE-")))
+                                  (push sym ignores)
+                                  sym))
+                               (T v)))
+                       vars)))
+    `(let (,@ignores)
+       (cl:multiple-value-setq ,vars ,vals))))
 
 (defun lsh (integer count)
   (ash integer (- count)))
@@ -27,9 +40,9 @@
 
 (defparameter *timezone* -9)
 
-(deff ≤ #'cl:<=)
-(deff ≥ #'cl:>=)
-(deff ≠ #'cl:/=)
+(deff ≤ #'cl:<=)                        ;^\
+(deff ≥ #'cl:>=)                        ;^]
+(deff ≠ #'cl:/=)                       ;^Z
 
 (defmacro condition-case (variables body-form &body clauses)
   "Execute BODY-FORM with conditions handled according to CLAUSES.
@@ -51,12 +64,28 @@ are bound to the values produced by BODY-FORM.  The values of the last form
 in the clause are returned from CONDITION-CASE."
   ;; Teco madness.
   ;; (declare (zwei:indentation 1 3 2 1))
-  `(handler-case ,body-form
+  (let ((cond (gensym "Cond-")))
+  `(handler-case ,(ensure-no-error-clause clauses
+                                          variables
+                                          body-form)
      ,@(mapcar (lambda (c)
-                 `(,(car c) (,@variables)
-                    (declare (ignorable ,@variables))
-                    ,@(cdr c)))
-               clauses)))
+                 `(,(car c) (,cond)
+                    (declare (ignorable ,cond))
+                    (let (,@variables)
+                      ;;; XXX
+                      (setq ,@(mapcan (lambda (v)
+                                        (list v cond))
+                                      variables))
+                      ,@(cdr c))))
+         (remove :no-error clauses
+                 :key (lambda (x) (and (consp x) (car x))))))))
+
+(defun ensure-no-error-clause (clauses vars form)
+  (let ((ne (find :no-error clauses
+                  :key (lambda (x) (and (consp x) (car x))))))
+    `(multiple-value-bind ,vars ,form
+       (declare (ignorable ,@vars))
+       ,@(cdr ne))))
 
 (defmacro without-interrupts (&body body)
   `(#+sbcl sb-sys:without-interrupts
@@ -74,10 +103,6 @@ in the clause are returned from CONDITION-CASE."
 (defun remainder (x y)
   (cl:rem x y))
 'WITH-STACK-LIST
-
-(defmacro FERROR (&rest args)
-  `(error ,@args))
-
 
 (defmacro multiple-value-bind (vars vals &body body)
   (let* ((ignores '())
@@ -119,22 +144,179 @@ in the clause are returned from CONDITION-CASE."
 (defun time-increment (time interval)
   (+ time interval))
 
-(defun parse-universal-time
-       (string &optional
-               (start 0)
-               (end nil)
-               (futurep t)
-               base-time
-               must-have-time
-               date-must-have-year
-               time-must-have-second
-               (day-must-be-valid t))
-  (declare (ignore start end
-                   futurep base-time
-                   must-have-time
-                   date-must-have-year
-                   time-must-have-second
-                   day-must-be-valid))
-  (parse-integer string))
+(declaim (inline delq))
+(defun delq (item list)
+  (delete item list :test #'eq))
+
+(declaim (inline memq))
+(defun memq (item list)
+  (member item list :test #'eq))
+
+(declaim (inline assq))
+(defun assq (item list)
+  (assoc item list :test #'eq))
+
+(deff SUBSTRING #'subseq)
+(deff NSUBSTRING #'subseq)
+
+#|(defun barf (fmt &rest args)
+  (apply #'error fmt args))|#
+
+(defun ass (pred data alist)
+  (assoc data alist :test pred))
+
+(defun neq (x y)
+  (not (eq x y)))
+
+(defun fixp (obj)
+  (integerp obj))
+
+(defun rest1 (list)
+  (nthcdr 1 list ))
+
+(defmacro selectq (item &body cases)
+  (let ((v (gensym)))
+    `(let ((,v ,item))
+       (cond
+	 ,@(mapcar (lambda (x)
+		     (let ((case (car x))
+			   (forms (cdr x)))
+		       (cond ((consp case)
+			      (if (equal '(quote t) case)
+				  `('T ,@forms)
+				  `((member ,v ',case :test #'eq) ,@forms)))
+			     ((atom case)
+			      (if (or (eq t case) (eq 'otherwise case))
+				  `('T ,@forms)
+				  `((eq ,v ',case) ,@forms)))
+			     ('T nil))))
+		   cases)))))
+
+(defun si>princ-function (obj &optional (stream *standard-output*))
+  (princ obj stream))
+
+
+(defun \\ (x y)
+  (rem x y))
+
+(defun fix (n)
+  (values (floor n)))
+
+(defun symeval (sym)
+  (symbol-value sym))
+
+(defun ferror (stream fmt &rest args)
+  (declare (ignore stream))
+  (apply #'error fmt args))
+
+(DEFUN STRING-SEARCH (KEY STRING &OPTIONAL (FROM 0) TO (KEY-FROM 0) KEY-TO
+                          &AUX KEY-LEN )
+  "Returns the index in STRING of the first occurrence of KEY past FROM, or NIL.
+If TO is non-NIL, the search stops there, and the value is NIL
+if no occurrence of KEY is found before there.
+KEY-FROM and KEY-TO may be used to specify searching for just a substring of KEY.
+CONSIDER-CASE if non-NIL means we distinguish letters by case."
+  (let ((string (string STRING))
+        (key   (string KEY)) ) ;??
+    (UNLESS KEY-TO
+      (SETQ KEY-TO (LENGTH KEY)) )
+    (SETQ KEY-LEN (- KEY-TO KEY-FROM))
+    (OR TO (SETQ TO (LENGTH STRING)))
+    (COND ((= KEY-FROM KEY-TO)
+           (AND (≤ FROM TO) FROM) )
+          (T
+           (SETQ TO (1+ (- TO KEY-LEN))) ;Last position at which key may start + 1
+           (PROG (CH1)
+                 (WHEN (MINUSP TO) (RETURN NIL))
+                 (SETQ CH1 (CHAR KEY KEY-FROM))
+              LOOP ;Find next place key might start
+                 (OR (SETQ FROM (position CH1 STRING :start FROM :end TO))
+                     ;;********************
+                     (RETURN NIL) )
+                 (AND (STRING-EQUAL KEY STRING
+                                    :start1 KEY-FROM
+                                    :start2 FROM
+                                    :end2 (+ from KEY-LEN))
+                      ;;********************
+                      (RETURN FROM) )
+                 (INCF FROM) ;Avoid infinite loop.  %STRING-SEARCH-CHAR
+                 (GO LOOP) ))))) ;  does right thing if from ^] to.
+
+
+
+(DEFUN STRING-SEARCH-NOT-SET (CHAR-SET STRING &OPTIONAL (FROM 0) TO CONSIDER-CASE)
+  "Returns the index in STRING of the first char past FROM that's NOT in CHAR-SET, or NIL.
+CHAR-SET can be a list of characters or a string.
+If TO is non-NIL, the search stops there, and the value is NIL
+if no occurrence of a char not in CHAR-SET is found before there.
+Case matters during character comparison if CONSIDER-CASE is non-NIL."
+  (CTYPECASE CHAR-SET
+    ((OR CHARACTER FIXNUM)
+      (STRING-SEARCH-NOT-CHAR CHAR-SET STRING FROM TO CONSIDER-CASE) )
+    (SEQUENCE
+      (IF (NULL CHAR-SET)
+         NIL
+         (let ((string string))
+           (OR TO (SETQ TO (LENGTH STRING)))
+           (DO ((I FROM (1+ I))
+                (FUN (IF (CL:LISTP CHAR-SET) #'MEM #'ARRAY-MEM)) )
+               ((≥ I TO) NIL)
+             (OR (IF CONSIDER-CASE
+                     (FUNCALL FUN #'CHAR= (CHAR STRING I) CHAR-SET)
+                     (FUNCALL FUN #'CHAR-EQUAL (CHAR STRING I) CHAR-SET) )
+                 (RETURN I) )))))))
+
+
+(DEFUN STRING-SEARCH-SET (CHAR-SET STRING &OPTIONAL (FROM 0) TO CONSIDER-CASE)
+  "Returns the index in STRING of the first char past FROM that's in CHAR-SET, or NIL.
+CHAR-SET can be a list of characters or a string.
+If TO is non-NIL, the search stops there, and the value is NIL
+if no occurrence of a char in CHAR-SET is found before there.
+Case matters during character comparison if CONSIDER-CASE is non-NIL."
+  (CTYPECASE CHAR-SET
+    ((OR CHARACTER FIXNUM)
+     (STRING-SEARCH-CHAR CHAR-SET STRING FROM TO CONSIDER-CASE) )
+    (SEQUENCE
+     (IF (NULL CHAR-SET)
+         NIL
+         (progn
+           (OR TO (SETQ TO (LENGTH STRING)))
+           (DO ((I FROM (1+ I))
+                (FUN (IF (CL:LISTP CHAR-SET) #'MEM #'ARRAY-MEM)) )
+               ((≥ I TO) NIL)
+             (AND (IF CONSIDER-CASE
+                      (FUNCALL FUN #'CHAR= (CHAR STRING I) CHAR-SET)
+                      (FUNCALL FUN #'CHAR-EQUAL (CHAR STRING I) CHAR-SET) )
+                  (RETURN I) )))))))
+
+
+(defun find-position-in-list (item list)
+  (position item list))
+
+(defun parse-number (string &optional (start 0) end)
+  (the number
+    (read-from-string string nil nil :start start :end end)))
+
+(defun string-search-not-char (char string
+                               &optional (start 0) end consider-case)
+  (let ((= (if consider-case #'char= #'char-equal)))
+    (position char string :start start :end end :test-not =)))
+
+(defun string-search-char (char string
+                           &optional (start 0) end consider-case)
+  (let ((= (if consider-case #'char= #'char-equal)))
+    (position char string :start start :end end :test =)))
+
+
+(defun mem (pred item list)
+  (member item list :test pred))
+
+(defun array-mem (pred item array)
+  (find item array :test pred))
+
+
+
+(defun minus (num)
+  (- num))
 
 ;;; eof

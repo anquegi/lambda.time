@@ -2,10 +2,6 @@
 
 (cl:in-package :lambda.time.internal)
 
-(def-suite lambda.time)
-
-(in-suite lambda.time)
-
 ;;; Date and time routines -*- Mode:LISP; Package:TIME; Readtable:ZL; Base:10 -*-
 ;;;     ** (c) Copyright 1980 Massachusetts Institute of Technology **
 

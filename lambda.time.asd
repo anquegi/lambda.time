@@ -10,7 +10,8 @@
   :components ((:file "package")
                ;; (:file "readtable")
                (:file "util")
-               (:file "lambda.time")))
+               (:file "lambda.time")
+               (:file "timpar")))
 
 (defmethod perform ((o test-op) (c (eql (find-system :lambda.time))))
   (load-system :lambda.time)
