@@ -32,6 +32,9 @@
            :verify-date
            ;;
            :*default-date-print-mode*
+           ;; NIL
+           :print-universal-mail-format-date
+           :print-current-universal-mail-format-date
            ))
 
 (defpackage :lambda.time.internal
