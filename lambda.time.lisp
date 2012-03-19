@@ -42,7 +42,9 @@ There are 32. bits of data, so the value wraps around every few hours."
     (:explorer
       (%microsecond-time))
     (:x86-64
-     (values-list (SB-IMPL::REAL-TIME->SEC-AND-USEC (get-internal-real-time))))))
+     #+sbcl (values-list (SB-IMPL::REAL-TIME->SEC-AND-USEC (get-internal-real-time)))
+     #+lispworks (get-internal-real-time)
+     #-(or sbcl lispworks) nil)))
 
 (DEFUN FIXNUM-MICROSECOND-TIME (&AUX (INHIBIT-SCHEDULING-FLAG T))
   "Return the current value of the microsecond clock as two fixnums."
@@ -60,7 +62,9 @@ There are 32. bits of data, so the value wraps around every few hours."
      (LET ((TIME (%MICROSECOND-TIME)))
        (VALUES (LDB (BYTE 23. 0) TIME) (LDB (BYTE 9. 23.) TIME))))
     (:x86-64
-     (values-list (SB-IMPL::REAL-TIME->SEC-AND-USEC (get-internal-real-time))))))
+     #+sbcl (values-list (SB-IMPL::REAL-TIME->SEC-AND-USEC (get-internal-real-time)))
+     #+lispworks (get-internal-real-time)
+     #-(or sbcl lispworks) nil)))
 
 #|(DEFCONST INTERNAL-TIME-UNITS-PER-SECOND 60.
   "60 60ths of a second in a second.")|#
@@ -666,6 +670,27 @@ If STREAM is NIL, construct and return a string."
         ;; Always print hours colon minutes, even if same as now
         (FORMAT STREAM "~2,'0D:~2,'0D" HOURS MINUTES)))))
 
+(defun print-universal-mail-format-date (ut &optional (stream *standard-output*))
+  "Prints the date and time specified by universal-time in \"mail format\".
+This is a format which conforms to that specified in RFC822.
+\"Standard for the format of ARPA Internet Text Messages\""
+  (multiple-value-bind (seconds minutes hours day month year day-of-the-week nil zone)
+                       (decode-universal-time ut)
+    (format stream
+            "~A ,~D ~A ~2,'0D ~2,'0D:~2,'0D:~2,'0D ~A"
+            (day-of-the-week-string day-of-the-week :short)
+            day
+            (month-string month :short)
+            (mod year 100)
+            hours
+            minutes
+            seconds
+            (timezone-string zone nil))))
+
+(defun print-current-universal-mail-format-date (&optional (stream *standard-output*))
+  "Prints the current date and time. using time:print-universaf-mail-format-date."
+  (print-universal-mail-format-date (get-universal-time) stream))
+
 #|(DEFUN PRINT-UPTIME (&OPTIONAL (STREAM *STANDARD-OUTPUT*))
   "Print how long this machine has been up since last cold boot."
   (FORMAT STREAM "~&This machine has been up ~\time-interval\."
@@ -822,7 +847,7 @@ If STREAM is NIL, construct and return a string."
                       (-6 NIL NIL #\S)
                       (-7 NIL NIL #\T)
                       (-8 NIL NIL #\U)
-                      (-9 NIL NIL #\V)
+                      (-9 "JST" NIL #\V)
                       (-10. NIL NIL #\W)
                       (-11. NIL NIL #\X)
                       (-12. NIL NIL #\Y)
