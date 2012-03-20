@@ -1665,8 +1665,8 @@ return the universal time for it.  Otherwise, return NIL."
 (DEFUN BARF (STRING &REST ARGS)
   ;; (apply #'FERROR 'PARSE-ERROR STRING ARGS)
   (apply #'ERROR STRING ARGS))
-(shadow 'test)
-(DEFUN TEST ()
+
+(DEFUN time.TEST ()
   (DO ((S (READ-LINE) (READ-LINE))
        (NOW (GET-UNIVERSAL-TIME)))
       ((EQUAL S ""))
