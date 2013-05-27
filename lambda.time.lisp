@@ -27,6 +27,16 @@ will return T if daylight savings time is in effect in the local timezone at tha
 :DD//MM//YY :MM//DD//YY :DD-MM-YY :DD-MMM-YY :|DD MMM YY| :DDMMMYY :YYMMDD :YYMMMDD
  and similar keywords with YYYY instead of YY.")
 
+#+sbcl
+(defun USEC32 ()
+  (multiple-value-bind (WIN SEC1970 USEC)
+                       (sb-unix:unix-gettimeofday)
+    (declare (ignore WIN))
+    (the (unsigned-byte 32)
+         (mod (+ (* 1000000 SEC1970) USEC)
+              #x100000000))))
+
+
 (DEFUN MICROSECOND-TIME (&AUX (INHIBIT-SCHEDULING-FLAG T))
   "Return the current value of the microsecond clock (a bignum).
 Only differences in clock values are meaningful.
@@ -42,7 +52,7 @@ There are 32. bits of data, so the value wraps around every few hours."
     (:explorer
       (%microsecond-time))
     (:x86-64
-     #+sbcl (values-list (SB-IMPL::REAL-TIME->SEC-AND-USEC (get-internal-real-time)))
+     #+sbcl (usec32)
      #+lispworks (get-internal-real-time)
      #-(or sbcl lispworks) nil)))
 
@@ -62,7 +72,7 @@ There are 32. bits of data, so the value wraps around every few hours."
      (LET ((TIME (%MICROSECOND-TIME)))
        (VALUES (LDB (BYTE 23. 0) TIME) (LDB (BYTE 9. 23.) TIME))))
     (:x86-64
-     #+sbcl (values-list (SB-IMPL::REAL-TIME->SEC-AND-USEC (get-internal-real-time)))
+     #+sbcl (usec32)
      #+lispworks (get-internal-real-time)
      #-(or sbcl lispworks) nil)))
 
@@ -212,7 +222,7 @@ A universal-time is the number of seconds since 1-Jan-1900 00:00-GMT (a bignum).
                (FLOOR (1- YEAR) 4) (* YEAR 365.)))      ;Number of days since 1-Jan-1900.
   (AND (> MONTH 2) (LEAP-YEAR-P goodyear)
        (SETQ TEM (1+ TEM)))                             ;After 29-Feb in a leap year.
-  (+ SECONDS (* 60. MINUTES) (* 3600. HOURS) (* TEM (* 60. 60. 24.)) (* TIMEZONE 3600.)))
+  (floor (+ SECONDS (* 60. MINUTES) (* 3600. HOURS) (* TEM (* 60. 60. 24.)) (* TIMEZONE 3600.))))
 
 
 ;;;; domain-dependent knowledge
